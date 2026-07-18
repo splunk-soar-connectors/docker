@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 145
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["I", "UP", "F401", "RUF"]
+ignore = ["RUF012", "RUF001"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "UP035"]
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "auto"
+
+[tool.djlint]
+profile = "django"
+extension = "html"
+indent = 2
+include = "H008,H009,H010,H014,H024,H026,H033,T028,T034"
+ignore = "D004,D018,H005,H006,H007,H011,H012,H013,H015,H016,H017,H019,H020,H021,H022,H023,H025,H029,H030,H031,H035,H036,H037,J004,J018,T001,T002,T003,T027,T032"
+
+[tool.mdformat]
+wrap = true
+number = true

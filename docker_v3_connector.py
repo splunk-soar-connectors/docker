@@ -1,43 +1,52 @@
+# Copyright (c) 2026 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # File: docker_v3_connector.py
 #
 # Licensed under Apache 2.0 (https://www.apache.org/licenses/LICENSE-2.0.txt)
 #
 
 # Python 3 Compatibility imports
-from __future__ import print_function, unicode_literals
 
+import json
 from urllib.parse import quote
 
 # Phantom App imports
 import phantom.app as phantom
-from phantom.base_connector import BaseConnector
+import requests
+from bs4 import BeautifulSoup
 from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
 
 # Usage of the consts file is recommended
 from docker_v3_consts import *
-import requests
-import json
-from bs4 import BeautifulSoup
 
 
 class RetVal(tuple):
-
     def __new__(cls, val1, val2=None):
         return tuple.__new__(RetVal, (val1, val2))
 
 
 class Docker_V3Connector(BaseConnector):
-
     def __init__(self):
-
         # Call the BaseConnectors init first
-        super(Docker_V3Connector, self).__init__()
+        super().__init__()
 
         self._state = None
         self._base_url = None
 
     def _get_error_message_from_exception(self, e):
-        """ This method is used to get appropriate error message from the exception.
+        """This method is used to get appropriate error message from the exception.
         :param e: Exception object
         :return: error message
         """
@@ -59,9 +68,9 @@ class Docker_V3Connector(BaseConnector):
 
         try:
             if error_code in ERR_CODE_MSG:
-                error_text = "Error Message: {0}".format(error_msg)
+                error_text = f"Error Message: {error_msg}"
             else:
-                error_text = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+                error_text = f"Error Code: {error_code}. Error Message: {error_msg}"
         except:
             self.debug_print(PARSE_ERR_MSG)
             error_text = PARSE_ERR_MSG
@@ -88,10 +97,8 @@ class Docker_V3Connector(BaseConnector):
             return RetVal(phantom.APP_SUCCESS, {})
 
         return RetVal(
-            action_result.set_status(
-                phantom.APP_ERROR,
-                "Status code: {0}. Empty response and no information in the header".format(response.status_code)
-            ), None
+            action_result.set_status(phantom.APP_ERROR, f"Status code: {response.status_code}. Empty response and no information in the header"),
+            None,
         )
 
     def _process_html_response(self, response, action_result):
@@ -102,21 +109,18 @@ class Docker_V3Connector(BaseConnector):
             soup = BeautifulSoup(response.text, "html.parser")
             # Remove the script, style, footer and navigation part from the HTML message
             for element in soup(["script", "style", "footer", "nav"]):
-               element.extract()
+                element.extract()
             error_text = soup.text
-            split_lines = error_text.split('\n')
+            split_lines = error_text.split("\n")
             split_lines = [x.strip() for x in split_lines if x.strip()]
-            error_text = '\n'.join(split_lines)
+            error_text = "\n".join(split_lines)
         except Exception:
             error_text = "Cannot parse error details"
 
-        message = "Status Code: {0}. Data from server:\n{1}\n".format(
-            status_code, error_text)
+        message = f"Status Code: {status_code}. Data from server:\n{error_text}\n"
 
-        message = message.replace('{', '{{').replace('}', '}}')
-        return RetVal(action_result.set_status(
-                                        phantom.APP_ERROR,
-                                        message), None)
+        message = message.replace("{", "{{").replace("}", "}}")
+        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
 
     def _process_json_response(self, r, action_result):
         # Try a json parse
@@ -124,12 +128,7 @@ class Docker_V3Connector(BaseConnector):
             resp_json = r.json()
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            return RetVal(
-                action_result.set_status(
-                    phantom.APP_ERROR,
-                    "Unable to parse JSON response. Error: {0}".format(err)
-                ), None
-            )
+            return RetVal(action_result.set_status(phantom.APP_ERROR, f"Unable to parse JSON response. Error: {err}"), None)
 
         # Please specify the status codes here
         if 200 <= r.status_code < 399:
@@ -137,31 +136,26 @@ class Docker_V3Connector(BaseConnector):
 
         # You should process the error returned in the json
         message = """Error from server.
-            Status Code: {0} Data from server: {1}""".format(
-            r.status_code,
-            r.text.replace('{', '{{').replace('}', '}}')
-        )
+            Status Code: {} Data from server: {}""".format(r.status_code, r.text.replace("{", "{{").replace("}", "}}"))
 
-        return RetVal(action_result.set_status(
-                                        phantom.APP_ERROR,
-                                        message), None)
+        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
 
     def _process_response(self, r, action_result):
         # store the r_text in debug data,
         # it will get dumped in the logs if the action fails
-        if hasattr(action_result, 'add_debug_data'):
-            action_result.add_debug_data({'r_status_code': r.status_code})
-            action_result.add_debug_data({'r_text': r.text})
-            action_result.add_debug_data({'r_headers': r.headers})
+        if hasattr(action_result, "add_debug_data"):
+            action_result.add_debug_data({"r_status_code": r.status_code})
+            action_result.add_debug_data({"r_text": r.text})
+            action_result.add_debug_data({"r_headers": r.headers})
 
         # Process each 'Content-Type' of response separately
 
         # Process a json response
-        if 'json' in r.headers.get('Content-Type', ''):
+        if "json" in r.headers.get("Content-Type", ""):
             return self._process_json_response(r, action_result)
 
         # Process an HTML response
-        if 'html' in r.headers.get('Content-Type', ''):
+        if "html" in r.headers.get("Content-Type", ""):
             return self._process_html_response(r, action_result)
 
         # it's not content-type that is to be parsed, handle an empty response
@@ -170,14 +164,9 @@ class Docker_V3Connector(BaseConnector):
 
         # everything else is actually an error at this point
         message = """Can't process response from server.
-            Status Code: {0} Data from server: {1}""".format(
-            r.status_code,
-            r.text.replace('{', '{{').replace('}', '}}')
-        )
+            Status Code: {} Data from server: {}""".format(r.status_code, r.text.replace("{", "{{").replace("}", "}}"))
 
-        return RetVal(action_result.set_status(
-                                        phantom.APP_ERROR,
-                                        message), None)
+        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
 
     def _make_rest_call(self, endpoint, action_result, method="get", **kwargs):
         # **kwargs can be any additional
@@ -190,37 +179,24 @@ class Docker_V3Connector(BaseConnector):
         try:
             request_func = getattr(requests, method)
         except AttributeError:
-            return RetVal(action_result.set_status(
-                phantom.APP_ERROR,
-                "Invalid method: {0}".format(method)),
-                resp_json
-            )
+            return RetVal(action_result.set_status(phantom.APP_ERROR, f"Invalid method: {method}"), resp_json)
 
         try:
             # Create a URL to connect to
-            url = "{0}{1}".format(self._base_url, endpoint)
-            r = request_func(
-                url,
-                verify=config.get('verify_server_cert', True),
-                **kwargs
-            )
+            url = f"{self._base_url}{endpoint}"
+            r = request_func(url, verify=config.get("verify_server_cert", True), **kwargs)
         except requests.exceptions.InvalidURL:
-            error_message = "Error connecting to server. Invalid URL %s" % (url)
+            error_message = f"Error connecting to server. Invalid URL {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except requests.exceptions.ConnectionError:
-            error_message = "Error connecting to server. Connection Refused from the Server for %s" % (url)
+            error_message = f"Error connecting to server. Connection Refused from the Server for {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except requests.exceptions.InvalidSchema:
-            error_message = "Error connecting to server. No connection adapters were found for %s" % (url)
+            error_message = f"Error connecting to server. No connection adapters were found for {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            return RetVal(
-                action_result.set_status(
-                    phantom.APP_ERROR,
-                    "Error Connecting to server. {0}".format(err)
-                ), resp_json
-            )
+            return RetVal(action_result.set_status(phantom.APP_ERROR, f"Error Connecting to server. {err}"), resp_json)
 
         return self._process_response(r, action_result)
 
@@ -235,55 +211,35 @@ class Docker_V3Connector(BaseConnector):
         try:
             request_func = getattr(requests, method)
         except AttributeError:
-            return RetVal(action_result.set_status(
-                phantom.APP_ERROR,
-                "Invalid method: {0}".format(method)),
-                resp_json
-            )
+            return RetVal(action_result.set_status(phantom.APP_ERROR, f"Invalid method: {method}"), resp_json)
 
         try:
             # Create a URL to connect to
-            url = "{0}{1}".format(self._base_url, endpoint)
+            url = f"{self._base_url}{endpoint}"
 
-            if 'data' in kwargs:
+            if "data" in kwargs:
                 try:
-                    k_data = json.loads(kwargs['data'])
+                    k_data = json.loads(kwargs["data"])
                 except Exception as e:
                     err = self._get_error_message_from_exception(e)
                     return RetVal(
-                        action_result.set_status(
-                            phantom.APP_ERROR,
-                            "{0} {1}".format(VALID_JSON_MSG.format(key='request_body'), err)
-                        ), resp_json
+                        action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="request_body"), err)), resp_json
                     )
-                r = request_func(
-                    url,
-                    verify=config.get("verify_server_cert", True),
-                    json=k_data
-                )
+                r = request_func(url, verify=config.get("verify_server_cert", True), json=k_data)
             else:
-                r = request_func(
-                    url,
-                    verify=config.get('verify_server_cert', True),
-                    **kwargs
-                )
+                r = request_func(url, verify=config.get("verify_server_cert", True), **kwargs)
         except requests.exceptions.InvalidURL:
-            error_message = "Error connecting to server. Invalid URL %s" % (url)
+            error_message = f"Error connecting to server. Invalid URL {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except requests.exceptions.ConnectionError:
-            error_message = "Error connecting to server. Connection Refused from the Server for %s" % (url)
+            error_message = f"Error connecting to server. Connection Refused from the Server for {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except requests.exceptions.InvalidSchema:
-            error_message = "Error connecting to server. No connection adapters were found for %s" % (url)
+            error_message = f"Error connecting to server. No connection adapters were found for {url}"
             return RetVal(action_result.set_status(phantom.APP_ERROR, error_message), resp_json)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            return RetVal(
-                action_result.set_status(
-                    phantom.APP_ERROR,
-                    "Error Connecting to server. {0}".format(err)
-                ), resp_json
-            )
+            return RetVal(action_result.set_status(phantom.APP_ERROR, f"Error Connecting to server. {err}"), resp_json)
 
         # Below line is commented out as it sets the status_code explicitly to 200
         # This creates a problem in the error message when the original response code is something else than 200(like 500)
@@ -293,16 +249,14 @@ class Docker_V3Connector(BaseConnector):
     def _cleanup_row_values(self, row):
         # The MySQL column values is supposed
         # to be a bytearray as opposed to a string
-        return {k: v.decode('utf-8')
-                if type(v) == bytearray else v for k, v in row.items()}
+        return {k: v.decode("utf-8") if type(v) == bytearray else v for k, v in row.items()}
 
     def _handle_test_connectivity(self, param):
-
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         self.save_progress("Obtaining the version of the docker host")
         # make rest call
-        ret_val, response = self._make_rest_call('/version', action_result)
+        ret_val, response = self._make_rest_call("/version", action_result)
         if phantom.is_fail(ret_val):
             self.save_progress("Test Connectivity Failed")
             return action_result.get_status()
@@ -311,13 +265,13 @@ class Docker_V3Connector(BaseConnector):
             res = json.dumps(response)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            self.debug_print("Error occurred while parsing response. {}".format(err))
+            self.debug_print(f"Error occurred while parsing response. {err}")
 
-        indices = [i + 1 for i, elem in enumerate(res) if elem == ',']
+        indices = [i + 1 for i, elem in enumerate(res) if elem == ","]
         indices.insert(0, 0)
         indices.insert(len(indices), len(res))
         for i in range(len(indices) - 1):
-            self.save_progress(res[indices[i]:indices[i + 1]])
+            self.save_progress(res[indices[i] : indices[i + 1]])
         self.save_progress(self._base_url)
 
         # Return success
@@ -325,58 +279,54 @@ class Docker_V3Connector(BaseConnector):
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_get_changes_of_a_container_filesystem(self, param):
-
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self (BaseConnector)
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
+        id = quote(str(param["id"]), safe="")
 
         # make rest call
-        ret_val, response = self._make_rest_call(
-            '/containers/{0}/changes'.format(id), action_result)
+        ret_val, response = self._make_rest_call(f"/containers/{id}/changes", action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section
-        response_dict = {'filesystem': response}
+        response_dict = {"filesystem": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the most
         # important values from data into the summary
         summary = action_result.update_summary({})
         try:
-            summary['filesystem_data'] = json.dumps(response, indent=1)
+            summary["filesystem_data"] = json.dumps(response, indent=1)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            self.debug_print("Error occurred while adding data to summary. {}".format(err))
+            self.debug_print(f"Error occurred while adding data to summary. {err}")
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_inspect_a_container(self, param):
-
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self (BaseConnector)
         # to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
-        size = param.get('size', False)
+        id = quote(str(param["id"]), safe="")
+        size = param.get("size", False)
         # make rest call
-        ret_val, response = self._make_rest_call(
-            '/containers/{0}/json?size={1}'.format(id, size), action_result)
+        ret_val, response = self._make_rest_call(f"/containers/{id}/json?size={size}", action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section
         try:
-            response_dict = {'containerStats': response['HostConfig']}
+            response_dict = {"containerStats": response["HostConfig"]}
             action_result.add_data(response_dict)
         except KeyError:
             return action_result.set_status(phantom.APP_ERROR, "Error occurred while fetching the 'Host Configuration' from API response")
@@ -384,535 +334,490 @@ class Docker_V3Connector(BaseConnector):
         # Add a dictionary that is made up of the most
         # important values from data into the summary
         summary = action_result.update_summary({})
-        summary['containerStats_data'] = "Please view the results in the results data section"
+        summary["containerStats_data"] = "Please view the results in the results data section"
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_update_a_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
-        request_body = param['request_body']
+        id = quote(str(param["id"]), safe="")
+        request_body = param["request_body"]
 
         # make rest call
-        ret_val, response = self._make_post_call(
-            '/containers/{0}/update'.format(id),
-            action_result,
-            data=request_body)
+        ret_val, response = self._make_post_call(f"/containers/{id}/update", action_result, data=request_body)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section
-        response_dict = {'update_stats': response}
+        response_dict = {"update_stats": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the most
         # important values from data into the summary
         summary = action_result.update_summary({})
         try:
-            summary['update_data'] = json.dumps(response, indent=1)
+            summary["update_data"] = json.dumps(response, indent=1)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            self.debug_print("Error occurred while adding data to summary. {}".format(err))
+            self.debug_print(f"Error occurred while adding data to summary. {err}")
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_restart_a_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
-        delay = param.get('delay', '')
+        id = quote(str(param["id"]), safe="")
+        delay = param.get("delay", "")
         # Validate 'delay' action parameter
         ret_val, delay = self._validate_integer(action_result, delay, DELAY_ACTION_PARAM)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
         # make rest call
-        ret_val, response = self._make_post_call(
-            '/containers/{0}/restart?t={1}'.format(id, delay), action_result)
+        ret_val, response = self._make_post_call(f"/containers/{id}/restart?t={delay}", action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response = "container {0} has restarted".format(id)
+        response = f"container {id} has restarted"
 
         # Add the response into the data section
-        response_dict = {'restart_stats': response}
+        response_dict = {"restart_stats": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the most
         # important values from data into the summary
         summary = action_result.update_summary({})
-        summary['restart_data'] = response
+        summary["restart_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_export_a_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
+        id = quote(str(param["id"]), safe="")
 
         # make rest call
-        ret_val, response = self._make_rest_call(
-            '/containers/{0}/export'.format(id), action_result)
+        ret_val, response = self._make_rest_call(f"/containers/{id}/export", action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section
-        response_dict = {'export_stat': response}
+        response_dict = {"export_stat": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the
         # most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['export_data'] = len(action_result['data'])
+        summary["export_data"] = len(action_result["data"])
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_list_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        all = param.get('all', False)
-        limit = param.get('limit', '')
+        all = param.get("all", False)
+        limit = param.get("limit", "")
         # Validate 'limit' action parameter
         ret_val, limit = self._validate_integer(action_result, limit, LIMIT_ACTION_PARAM)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
-        size = param.get('size', False)
-        filters = param.get('filters', '')
+        size = param.get("size", False)
+        filters = param.get("filters", "")
         if filters:
             # Validate 'filters' action parameter
             try:
                 json.loads(filters)
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
+                return action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="filters"), err))
         # make rest call
         ret_val, response = self._make_rest_call(
-            '/containers/json?all={0}&limit={1}&size={2}&filters={3}'.format(
-                                                    all,
-                                                    limit,
-                                                    size,
-                                                    quote(str(filters), safe='')), action_result)
+            "/containers/json?all={}&limit={}&size={}&filters={}".format(all, limit, size, quote(str(filters), safe="")), action_result
+        )
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section\
-        response_dict = {'containers': response}
+        response_dict = {"containers": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the
         # most important values from data into the summary
         summary = action_result.update_summary({})
         try:
-            summary['container_summary'] = [
-                    {'container ' + str(item):
-                        {
-                        'id': response_dict['containers'][item]['Id'],
-                        'Name': response_dict['containers'][item]['Names'][0]}}
-                    for item in range(len(response_dict['containers']))]
+            summary["container_summary"] = [
+                {
+                    "container " + str(item): {
+                        "id": response_dict["containers"][item]["Id"],
+                        "Name": response_dict["containers"][item]["Names"][0],
+                    }
+                }
+                for item in range(len(response_dict["containers"]))
+            ]
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Error occurred while fetching 'ID' and 'Name' from API response. {}".format(err))
+            return action_result.set_status(phantom.APP_ERROR, f"Error occurred while fetching 'ID' and 'Name' from API response. {err}")
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_stop_a_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
+        id = quote(str(param["id"]), safe="")
 
         # make rest call
-        ret_val, response = self._make_post_call(
-            '/containers/{0}/stop'.format(id), action_result)
+        ret_val, response = self._make_post_call(f"/containers/{id}/stop", action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response = "container {0} has terminated".format(id)
+        response = f"container {id} has terminated"
         # Add the response into the data section
-        response_dict = {'pause': response}
+        response_dict = {"pause": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of the most
         # important values from data into the summary
         summary = action_result.update_summary({})
-        summary['stop_data'] = response
+        summary["stop_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_start_a_container(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self (BaseConnector)
         # to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = quote(str(param['id']), safe='')
-        detachkeys = quote(str(param.get('detachkeys', '')), safe='')
+        id = quote(str(param["id"]), safe="")
+        detachkeys = quote(str(param.get("detachkeys", "")), safe="")
 
         # make rest call
-        ret_val, response = self._make_post_call(
-            '/containers/{0}/start?detachKeys={1}'.format(
-                                                        id,
-                                                        detachkeys),
-            action_result)
+        ret_val, response = self._make_post_call(f"/containers/{id}/start?detachKeys={detachkeys}", action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add the response into the data section
-        response = "Container {0} has resumed".format(id)
-        response_dict = {'unpause': response}
+        response = f"Container {id} has resumed"
+        response_dict = {"unpause": response}
         action_result.add_data(response_dict)
         # Add a dictionary that is made up of the
         # most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['unpause_data'] = response
+        summary["unpause_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_list_images(self, param):
         # Implement the handler here
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         # Add an action result object to self
         # (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        all = param.get('all', False)
-        filters = param.get('filters', '')
+        all = param.get("all", False)
+        filters = param.get("filters", "")
         if filters:
             # Validate 'filters' action parameter
             try:
                 json.loads(filters)
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
-        digests = param.get('digests', False)
+                return action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="filters"), err))
+        digests = param.get("digests", False)
         # make rest call
         ret_val, response = self._make_rest_call(
-            '/images/json?all={0}&filters={1}&digests={2}'.format(
-                                                                all,
-                                                                quote(str(filters), safe=''),
-                                                                digests),
-            action_result)
+            "/images/json?all={}&filters={}&digests={}".format(all, quote(str(filters), safe=""), digests), action_result
+        )
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Now post process the data,  uncomment code as you deem fit
         # Add the response into the data section
-        response_dict = {'images': response}
+        response_dict = {"images": response}
         action_result.add_data(response_dict)
 
         # Add a dictionary that is made up of
         # the most important values from data into the summary
         summary = action_result.update_summary({})
         try:
-            summary['image_data'] = [
-                    {'images ' + str(item):
-                        {'id': response_dict['images'][item]['Id'],
-                            'Tags':
-                                response_dict['images'][item]['RepoTags'][0]}}
-                    for item in range(len(response_dict['images']))]
+            summary["image_data"] = [
+                {"images " + str(item): {"id": response_dict["images"][item]["Id"], "Tags": response_dict["images"][item]["RepoTags"][0]}}
+                for item in range(len(response_dict["images"]))
+            ]
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Error occurred while fetching 'ID' and 'Tags' from API response. {}".format(err))
+            return action_result.set_status(phantom.APP_ERROR, f"Error occurred while fetching 'ID' and 'Tags' from API response. {err}")
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_rename_container(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        id = quote(str(param['id']), safe='')
-        name = quote(str(param['name']), safe='')
-        ret_val, response = self._make_post_call(
-                '/containers/{0}/rename?name={1}'.format(
-                                                        id,
-                                                        name),
-                action_result)
+        id = quote(str(param["id"]), safe="")
+        name = quote(str(param["name"]), safe="")
+        ret_val, response = self._make_post_call(f"/containers/{id}/rename?name={name}", action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'rename': response}
+        response_dict = {"rename": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['rename_data'] = response
+        summary["rename_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_kill_container(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
         # Access action parameters passed in the 'param' dictionary
 
-        id = quote(str(param['id']), safe='')
-        signal = quote(str(param.get('signal', '')), safe='')
-        ret_val, response = self._make_post_call(
-                    '/containers/{0}/kill?signal={1}'.format(
-                        id,
-                        signal),
-                    action_result)
+        id = quote(str(param["id"]), safe="")
+        signal = quote(str(param.get("signal", "")), safe="")
+        ret_val, response = self._make_post_call(f"/containers/{id}/kill?signal={signal}", action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'kill': response}
+        response_dict = {"kill": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['kill_data'] = response
+        summary["kill_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_remove_container(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        id = quote(str(param['id']), safe='')
-        volumes = param.get('volumes', False)
-        force = param.get('force', False)
-        link = param.get('link', False)
-        ret_val, response = self._make_post_call(
-                    '/containers/{0}?v={1}&force={2}&link={3}'.format(
-                        id,
-                        volumes,
-                        force,
-                        link),
-                    action_result, method='delete')
+        id = quote(str(param["id"]), safe="")
+        volumes = param.get("volumes", False)
+        force = param.get("force", False)
+        link = param.get("link", False)
+        ret_val, response = self._make_post_call(f"/containers/{id}?v={volumes}&force={force}&link={link}", action_result, method="delete")
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'remove container': response}
+        response_dict = {"remove container": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['remove_container_data'] = response
+        summary["remove_container_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_delete_stopped_containers(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        filters = param.get('filters', '')
+        filters = param.get("filters", "")
         if filters:
             # Validate 'filters' action parameter
             try:
                 json.loads(filters)
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
-        ret_val, response = self._make_post_call(
-                    '/containers/prune?filters={0}'.format(quote(str(filters), safe='')),
-                    action_result)
+                return action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="filters"), err))
+        ret_val, response = self._make_post_call("/containers/prune?filters={}".format(quote(str(filters), safe="")), action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'prune': response}
+        response_dict = {"prune": response}
         action_result.add_data(response_dict)
         # Add a dictionary that is made up of
         # the most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['prune_data'] = response
+        summary["prune_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_remove_image(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = quote(str(param['name']), safe='')
-        force = param.get('force', False)
-        noprune = param.get('noprune', False)
-        ret_val, response = self._make_post_call(
-                    '/images/{0}?force={1}&noprune={2}'.format(
-                        name,
-                        force,
-                        noprune),
-                    action_result, method='delete')
+        name = quote(str(param["name"]), safe="")
+        force = param.get("force", False)
+        noprune = param.get("noprune", False)
+        ret_val, response = self._make_post_call(f"/images/{name}?force={force}&noprune={noprune}", action_result, method="delete")
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'delete image': response}
+        response_dict = {"delete image": response}
         action_result.add_data(response_dict)
         # Add a dictionary that is made
         # up of the most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['delete_image_data'] = response
+        summary["delete_image_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_delete_unused_images(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        filters = param.get('filters', '')
+        filters = param.get("filters", "")
         if filters:
             # Validate 'filters' action parameter
             try:
                 json.loads(filters)
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
-        ret_val, response = self._make_post_call(
-            '/images/prune?filters={0}'.format(quote(str(filters), safe='')), action_result)
+                return action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="filters"), err))
+        ret_val, response = self._make_post_call("/images/prune?filters={}".format(quote(str(filters), safe="")), action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'unused_images': response}
+        response_dict = {"unused_images": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['unused_images_data'] = response
+        summary["unused_images_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_image_history(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = quote(str(param['name']), safe='')
-        ret_val, response = self._make_rest_call(
-            '/images/{0}/history'.format(name), action_result)
+        name = quote(str(param["name"]), safe="")
+        ret_val, response = self._make_rest_call(f"/images/{name}/history", action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'history': response}
+        response_dict = {"history": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['history_data'] = "For more detailed results please click in "
+        summary["history_data"] = "For more detailed results please click in "
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_delete_builder_cache(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        keep_storage = param.get('keep_storage', '')
+        keep_storage = param.get("keep_storage", "")
         # Validate 'keep_storage' action parameter
         ret_val, keep_storage = self._validate_integer(action_result, keep_storage, KEEP_STORAGE_ACTION_PARAM)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
-        all = param.get('all', False)
-        filters = param.get('filters', '')
+        all = param.get("all", False)
+        filters = param.get("filters", "")
         if filters:
             # Validate 'filters' action parameter
             try:
                 json.loads(filters)
             except Exception as e:
                 err = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
+                return action_result.set_status(phantom.APP_ERROR, "{} {}".format(VALID_JSON_MSG.format(key="filters"), err))
         ret_val, response = self._make_post_call(
-                    '/build/prune?keep-storage={0}&all={1}&filters={2}'.format(
-                        keep_storage,
-                        all,
-                        quote(str(filters), safe='')),
-                    action_result)
+            "/build/prune?keep-storage={}&all={}&filters={}".format(keep_storage, all, quote(str(filters), safe="")), action_result
+        )
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'cache': response}
+        response_dict = {"cache": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
         try:
-            summary['cache_data'] = json.dumps(response, indent=1)
+            summary["cache_data"] = json.dumps(response, indent=1)
         except Exception as e:
             err = self._get_error_message_from_exception(e)
-            self.debug_print("Error occurred while adding data to summary. {}".format(err))
+            self.debug_print(f"Error occurred while adding data to summary. {err}")
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_snapshot_of_a_container(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        container = quote(str(param['container']), safe='')
-        repo = quote(str(param.get('repo', '')), safe='')
-        tag = quote(str(param.get('tag', '')), safe='')
-        comment = quote(str(param.get('comment', '')), safe='')
-        author = quote(str(param.get('author', '')), safe='')
-        pause = param.get('pause', True)
-        changes = quote(str(param.get('changes', '')), safe='')
-        request_body = param['request_body']
+        container = quote(str(param["container"]), safe="")
+        repo = quote(str(param.get("repo", "")), safe="")
+        tag = quote(str(param.get("tag", "")), safe="")
+        comment = quote(str(param.get("comment", "")), safe="")
+        author = quote(str(param.get("author", "")), safe="")
+        pause = param.get("pause", True)
+        changes = quote(str(param.get("changes", "")), safe="")
+        request_body = param["request_body"]
 
-        rest_call_endpoint = '/commit?container={0}&repo={1}&tag={2}&comment={3}&author={4}&pause={5}&changes={6}'
+        rest_call_endpoint = "/commit?container={0}&repo={1}&tag={2}&comment={3}&author={4}&pause={5}&changes={6}"
         ret_val, response = self._make_post_call(
-            rest_call_endpoint.format(
-                container, repo,
-                tag, comment, author,
-                pause, changes), action_result, data=request_body)
+            rest_call_endpoint.format(container, repo, tag, comment, author, pause, changes), action_result, data=request_body
+        )
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'snapshot': response}
+        response_dict = {"snapshot": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['snapshot_data'] = response
+        summary["snapshot_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_create_a_container(self, param):
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        self.save_progress(f"In action handler for: {self.get_action_identifier()}")
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = quote(str(param['name']), safe='')
-        request_body = param['request_body']
-        ret_val, response = self._make_post_call(
-            '/containers/create?name={0}'.format(name),
-            action_result, data=request_body)
+        name = quote(str(param["name"]), safe="")
+        request_body = param["request_body"]
+        ret_val, response = self._make_post_call(f"/containers/create?name={name}", action_result, data=request_body)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        response_dict = {'create': response}
+        response_dict = {"create": response}
         action_result.add_data(response_dict)
 
         summary = action_result.update_summary({})
-        summary['create_data'] = response
+        summary["create_data"] = response
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -924,64 +829,64 @@ class Docker_V3Connector(BaseConnector):
 
         self.debug_print("action_id", self.get_action_identifier())
 
-        if action_id == 'test_connectivity':
+        if action_id == "test_connectivity":
             ret_val = self._handle_test_connectivity(param)
 
-        elif action_id == 'get_changes_of_a_container_filesystem':
+        elif action_id == "get_changes_of_a_container_filesystem":
             ret_val = self._handle_get_changes_of_a_container_filesystem(param)
 
-        elif action_id == 'inspect_a_container':
+        elif action_id == "inspect_a_container":
             ret_val = self._handle_inspect_a_container(param)
 
-        elif action_id == 'update_a_container':
+        elif action_id == "update_a_container":
             ret_val = self._handle_update_a_container(param)
 
-        elif action_id == 'restart_a_container':
+        elif action_id == "restart_a_container":
             ret_val = self._handle_restart_a_container(param)
 
-        elif action_id == 'export_a_container':
+        elif action_id == "export_a_container":
             ret_val = self._handle_export_a_container(param)
 
-        elif action_id == 'list_container':
+        elif action_id == "list_container":
             ret_val = self._handle_list_container(param)
 
-        elif action_id == 'stop_a_container':
+        elif action_id == "stop_a_container":
             ret_val = self._handle_stop_a_container(param)
 
-        elif action_id == 'start_a_container':
+        elif action_id == "start_a_container":
             ret_val = self._handle_start_a_container(param)
 
-        elif action_id == 'list_images':
+        elif action_id == "list_images":
             ret_val = self._handle_list_images(param)
 
-        elif action_id == 'rename_container':
+        elif action_id == "rename_container":
             ret_val = self._handle_rename_container(param)
 
-        elif action_id == 'kill_container':
+        elif action_id == "kill_container":
             ret_val = self._handle_kill_container(param)
 
-        elif action_id == 'remove_container':
+        elif action_id == "remove_container":
             ret_val = self._handle_remove_container(param)
 
-        elif action_id == 'delete_stopped':
+        elif action_id == "delete_stopped":
             ret_val = self._handle_delete_stopped_containers(param)
 
-        elif action_id == 'remove_image':
+        elif action_id == "remove_image":
             ret_val = self._handle_remove_image(param)
 
-        elif action_id == 'delete_unused':
+        elif action_id == "delete_unused":
             ret_val = self._handle_delete_unused_images(param)
 
-        elif action_id == 'image_history':
+        elif action_id == "image_history":
             ret_val = self._handle_image_history(param)
 
-        elif action_id == 'delete_builder_cache':
+        elif action_id == "delete_builder_cache":
             ret_val = self._handle_delete_builder_cache(param)
 
-        elif action_id == 'snapshot_of_a_container':
+        elif action_id == "snapshot_of_a_container":
             ret_val = self._handle_snapshot_of_a_container(param)
 
-        elif action_id == 'create_a_container':
+        elif action_id == "create_a_container":
             ret_val = self._handle_create_a_container(param)
 
         return ret_val
@@ -994,7 +899,7 @@ class Docker_V3Connector(BaseConnector):
         # get the asset config
         config = self.get_config()
 
-        self._base_url = config['host_ip']
+        self._base_url = config["host_ip"]
 
         return phantom.APP_SUCCESS
 
@@ -1005,16 +910,17 @@ class Docker_V3Connector(BaseConnector):
 
 
 def main():
-    import pudb
     import argparse
+
+    import pudb
 
     pudb.set_trace()
 
     argparser = argparse.ArgumentParser()
 
-    argparser.add_argument('input_test_json', help='Input Test JSON file')
-    argparser.add_argument('-u', '--username', help='username', required=False)
-    argparser.add_argument('-p', '--password', help='password', required=False)
+    argparser.add_argument("input_test_json", help="Input Test JSON file")
+    argparser.add_argument("-u", "--username", help="username", required=False)
+    argparser.add_argument("-p", "--password", help="password", required=False)
 
     args = argparser.parse_args()
     session_id = None
@@ -1023,35 +929,31 @@ def main():
     password = args.password
 
     if username is not None and password is None:
-
         # User specified a username but not a password, so ask
         import getpass
+
         password = getpass.getpass("Password: ")
 
     if username and password:
         try:
-            login_url = Docker_V3Connector._get_phantom_base_url() + '/login'
+            login_url = Docker_V3Connector._get_phantom_base_url() + "/login"
 
             print("Accessing the Login page")
             r = requests.get(login_url, verify=False)
-            csrftoken = r.cookies['csrftoken']
+            csrftoken = r.cookies["csrftoken"]
 
             data = dict()
-            data['username'] = username
-            data['password'] = password
-            data['csrfmiddlewaretoken'] = csrftoken
+            data["username"] = username
+            data["password"] = password
+            data["csrfmiddlewaretoken"] = csrftoken
 
             headers = dict()
-            headers['Cookie'] = 'csrftoken=' + csrftoken
-            headers['Referer'] = login_url
+            headers["Cookie"] = "csrftoken=" + csrftoken
+            headers["Referer"] = login_url
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(
-                login_url,
-                verify=False,
-                data=data,
-                headers=headers)
-            session_id = r2.cookies['sessionid']
+            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            session_id = r2.cookies["sessionid"]
         except Exception as e:
             print("Unable to get session id from the platform. Error: " + str(e))
             exit(1)
@@ -1065,8 +967,8 @@ def main():
         connector.print_progress_message = True
 
         if session_id is not None:
-            in_json['user_session_token'] = session_id
-            connector._set_csrf_info(csrftoken, headers['Referer'])
+            in_json["user_session_token"] = session_id
+            connector._set_csrf_info(csrftoken, headers["Referer"])
 
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print(json.dumps(json.loads(ret_val), indent=4))
@@ -1074,5 +976,5 @@ def main():
     exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -7,10 +7,10 @@
     "logo": "logo_docker_v3.svg",
     "logo_dark": "logo_docker_v3_dark.svg",
     "product_name": "Docker",
-    "python_version": "3",
+    "python_version": "3.9, 3.13",
     "product_version_regex": ".*",
     "publisher": "John Wang",
-    "license": "Copyright (c) John Wang, 2020",
+    "license": "Copyright (c) John Wang, 2020-2026",
     "app_version": "1.0.0",
     "utctime_updated": "2020-05-14T13:46:36.326886Z",
     "package_name": "phantom_docker_v3",
@@ -1121,7 +1121,7 @@
             "read_only": false,
             "parameters": {
                 "filters": {
-                    "description": "Filters to process on the prune list, encoded as JSON (a map[string][]string), e.g., {\"status\":[\"exited\"]}",    
+                    "description": "Filters to process on the prune list, encoded as JSON (a map[string][]string), e.g., {\"status\":[\"exited\"]}",
                     "data_type": "string",
                     "order": 0
                 }
