@@ -6,6 +6,8 @@
 # Python 3 Compatibility imports
 from __future__ import print_function, unicode_literals
 
+from urllib.parse import quote
+
 # Phantom App imports
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
@@ -330,7 +332,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
 
         # make rest call
         ret_val, response = self._make_rest_call(
@@ -363,7 +365,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
         size = param.get('size', False)
         # make rest call
         ret_val, response = self._make_rest_call(
@@ -395,7 +397,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
         request_body = param['request_body']
 
         # make rest call
@@ -431,7 +433,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
         delay = param.get('delay', '')
         # Validate 'delay' action parameter
         ret_val, delay = self._validate_integer(action_result, delay, DELAY_ACTION_PARAM)
@@ -466,7 +468,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
 
         # make rest call
         ret_val, response = self._make_rest_call(
@@ -515,7 +517,7 @@ class Docker_V3Connector(BaseConnector):
                                                     all,
                                                     limit,
                                                     size,
-                                                    filters), action_result)
+                                                    quote(str(filters), safe='')), action_result)
 
         if phantom.is_fail(ret_val):
             return action_result.get_status()
@@ -549,7 +551,7 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
+        id = quote(str(param['id']), safe='')
 
         # make rest call
         ret_val, response = self._make_post_call(
@@ -579,8 +581,8 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         # Access action parameters passed in the 'param' dictionary
-        id = param['id']
-        detachkeys = param.get('detachkeys', '')
+        id = quote(str(param['id']), safe='')
+        detachkeys = quote(str(param.get('detachkeys', '')), safe='')
 
         # make rest call
         ret_val, response = self._make_post_call(
@@ -625,7 +627,7 @@ class Docker_V3Connector(BaseConnector):
         ret_val, response = self._make_rest_call(
             '/images/json?all={0}&filters={1}&digests={2}'.format(
                                                                 all,
-                                                                filters,
+                                                                quote(str(filters), safe=''),
                                                                 digests),
             action_result)
 
@@ -657,8 +659,8 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        id = param['id']
-        name = param['name']
+        id = quote(str(param['id']), safe='')
+        name = quote(str(param['name']), safe='')
         ret_val, response = self._make_post_call(
                 '/containers/{0}/rename?name={1}'.format(
                                                         id,
@@ -681,8 +683,8 @@ class Docker_V3Connector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
         # Access action parameters passed in the 'param' dictionary
 
-        id = param['id']
-        signal = param.get('signal', '')
+        id = quote(str(param['id']), safe='')
+        signal = quote(str(param.get('signal', '')), safe='')
         ret_val, response = self._make_post_call(
                     '/containers/{0}/kill?signal={1}'.format(
                         id,
@@ -704,7 +706,7 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        id = param['id']
+        id = quote(str(param['id']), safe='')
         volumes = param.get('volumes', False)
         force = param.get('force', False)
         link = param.get('link', False)
@@ -740,7 +742,7 @@ class Docker_V3Connector(BaseConnector):
                 err = self._get_error_message_from_exception(e)
                 return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
         ret_val, response = self._make_post_call(
-                    '/containers/prune?filters={0}'.format(filters),
+                    '/containers/prune?filters={0}'.format(quote(str(filters), safe='')),
                     action_result)
 
         if phantom.is_fail(ret_val):
@@ -759,7 +761,7 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = param['name']
+        name = quote(str(param['name']), safe='')
         force = param.get('force', False)
         noprune = param.get('noprune', False)
         ret_val, response = self._make_post_call(
@@ -793,7 +795,7 @@ class Docker_V3Connector(BaseConnector):
                 err = self._get_error_message_from_exception(e)
                 return action_result.set_status(phantom.APP_ERROR, "{0} {1}".format(VALID_JSON_MSG.format(key='filters'), err))
         ret_val, response = self._make_post_call(
-            '/images/prune?filters={0}'.format(filters), action_result)
+            '/images/prune?filters={0}'.format(quote(str(filters), safe='')), action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -809,7 +811,7 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = param['name']
+        name = quote(str(param['name']), safe='')
         ret_val, response = self._make_rest_call(
             '/images/{0}/history'.format(name), action_result)
         if phantom.is_fail(ret_val):
@@ -845,7 +847,7 @@ class Docker_V3Connector(BaseConnector):
                     '/build/prune?keep-storage={0}&all={1}&filters={2}'.format(
                         keep_storage,
                         all,
-                        filters),
+                        quote(str(filters), safe='')),
                     action_result)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
@@ -866,13 +868,13 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        container = param['container']
-        repo = param.get('repo', '')
-        tag = param.get('tag', '')
-        comment = param.get('comment', '')
-        author = param.get('author', '')
+        container = quote(str(param['container']), safe='')
+        repo = quote(str(param.get('repo', '')), safe='')
+        tag = quote(str(param.get('tag', '')), safe='')
+        comment = quote(str(param.get('comment', '')), safe='')
+        author = quote(str(param.get('author', '')), safe='')
         pause = param.get('pause', True)
-        changes = param.get('changes', '')
+        changes = quote(str(param.get('changes', '')), safe='')
         request_body = param['request_body']
 
         rest_call_endpoint = '/commit?container={0}&repo={1}&tag={2}&comment={3}&author={4}&pause={5}&changes={6}'
@@ -897,7 +899,7 @@ class Docker_V3Connector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         action_result = self.add_action_result(ActionResult(dict(param)))
-        name = param['name']
+        name = quote(str(param['name']), safe='')
         request_body = param['request_body']
         ret_val, response = self._make_post_call(
             '/containers/create?name={0}'.format(name),
