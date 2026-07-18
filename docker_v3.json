@@ -23,6 +23,13 @@
             "data_type": "string",
             "required": true,
             "order": 0
+        },
+        "verify_server_cert": {
+            "description": "Verify the Docker server TLS certificate",
+            "data_type": "boolean",
+            "default": true,
+            "required": false,
+            "order": 1
         }
     },
     "actions": [

@@ -199,7 +199,7 @@ class Docker_V3Connector(BaseConnector):
             url = "{0}{1}".format(self._base_url, endpoint)
             r = request_func(
                 url,
-                verify=config.get('verify_server_cert', False),
+                verify=config.get('verify_server_cert', True),
                 **kwargs
             )
         except requests.exceptions.InvalidURL:
@@ -256,13 +256,13 @@ class Docker_V3Connector(BaseConnector):
                     )
                 r = request_func(
                     url,
-                    verify=config.get("verify_server_cert", False),
+                    verify=config.get("verify_server_cert", True),
                     json=k_data
                 )
             else:
                 r = request_func(
                     url,
-                    verify=config.get('verify_server_cert', False),
+                    verify=config.get('verify_server_cert', True),
                     **kwargs
                 )
         except requests.exceptions.InvalidURL:
