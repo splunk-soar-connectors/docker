@@ -30,6 +30,7 @@ from phantom.base_connector import BaseConnector
 
 # Usage of the consts file is recommended
 from docker_v3_consts import *
+from docker_validation import validate_endpoint_path
 
 
 class RetVal(tuple):
@@ -172,6 +173,11 @@ class Docker_V3Connector(BaseConnector):
         # **kwargs can be any additional
         # parameters that requests.request accepts
 
+        try:
+            validate_endpoint_path(endpoint)
+        except ValueError as exc:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, str(exc)), None)
+
         config = self.get_config()
 
         resp_json = None
@@ -203,6 +209,11 @@ class Docker_V3Connector(BaseConnector):
     def _make_post_call(self, endpoint, action_result, method="post", **kwargs):
         # **kwargs can be any additional
         # parameters that requests.request accepts
+
+        try:
+            validate_endpoint_path(endpoint)
+        except ValueError as exc:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, str(exc)), None)
 
         config = self.get_config()
 
