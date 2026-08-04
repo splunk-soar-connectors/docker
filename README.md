@@ -1,7 +1,7 @@
 # Docker
 
 Publisher: John Wang <br>
-Connector Version: 2.0.0 <br>
+Connector Version: 2.0.1 <br>
 Product Vendor: Docker <br>
 Product Name: Docker <br>
 Minimum Product Version: 4.8.24304
